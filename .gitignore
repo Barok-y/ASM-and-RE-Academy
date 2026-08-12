@@ -1,0 +1,47 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+build/
+dist/
+wheels/
+.eggs/
+.mypy_cache/
+.pyre/
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Tool caches ----
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# ---- Project runtime data (created by the TUI on first run) ----
+.asm-academy/
+*.db
+*.sqlite
+*.sqlite3
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---- Test / scratch output ----
+/tmp/

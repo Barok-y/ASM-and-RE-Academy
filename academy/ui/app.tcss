@@ -1,0 +1,171 @@
+Screen {
+    layout: vertical;
+}
+
+#title {
+    dock: top;
+    content-align: center middle;
+    height: 3;
+    text-style: bold;
+}
+
+Button {
+    margin: 0 8;
+}
+
+/* ------- main menu: buttons left, Yotod logo right ------- */
+
+#menu-body {
+    height: 1fr;
+    align: center middle;
+}
+
+#menu-side {
+    width: 40%;
+    height: 1fr;
+    padding: 1 1 1 2;
+    scrollbar-size: 1 1;
+}
+
+.menu-col {
+    width: 100%;
+}
+
+.menu-col Button {
+    width: 100%;
+    height: 2;
+    margin: 0;
+    border: none;
+}
+
+#logo {
+    width: 1fr;
+    height: 1fr;
+    margin: 2 3;
+    content-align: center middle;
+}
+
+#learn-list, #lesson-list, #challenge-list, #missions-list, #notebook-list {
+    height: 1fr;
+    margin: 0 2;
+}
+
+.hint {
+    color: $text-muted;
+    margin: 0 2;
+    height: 1;
+}
+
+#panels, #debug-panels, #views {
+    height: 1fr;
+}
+
+.panel {
+    border: round $primary;
+    padding: 0 1;
+    height: 100%;
+    width: 1fr;
+    scrollbar-size: 1 1;
+}
+
+#code-panel, #registers-panel, #flags-panel, #memory-panel, #stack-panel, #output-panel {
+    width: 1fr;
+}
+
+#lesson-header, #module-title, #challenge-title, #missions-title {
+    text-style: bold;
+    margin: 0 2;
+    height: 1;
+}
+
+#lesson-step, #lesson-feedback, #challenge-spec, #challenge-hints, #challenge-result,
+#mission-body, #mission-result, #progress-body, #settings-body, #notebook-detail,
+#debug-status {
+    margin: 0 2;
+    scrollbar-size: 1 1;
+}
+
+#lesson-step, #lesson-feedback {
+    height: auto;
+    max-height: 1fr;
+}
+
+#lesson-step {
+    max-height: 12;
+}
+
+#lesson-feedback {
+    max-height: 7;
+}
+
+#lesson-input, #challenge-input, #mission-input, #notebook-input, #cmd {
+    margin: 0 2;
+}
+
+#notebook-detail, #progress-body, #settings-body {
+    height: 1fr;
+}
+
+#author-title {
+    text-style: bold;
+    margin: 0 2;
+    height: 1;
+}
+
+/* ------- visual polish: lesson/feedback styling ------- */
+
+#lesson-step { 
+    padding: 0 1;
+    border: round $accent;
+} 
+
+#lesson-feedback {
+    padding: 0 1;
+    border: round $accent;
+    color: $text;
+}
+
+#lesson-header {
+    color: $accent;
+    text-style: bold;
+}
+
+/* step counter ring */
+#lesson-header .step-ring {
+    color: $warning;
+}
+
+/* session-wide colorful accents */
+#author-title, #module-title, #challenge-title, #missions-title {
+    color: $secondary;
+}
+
+#lesson-input, #challenge-input, #mission-input, #notebook-input, #cmd {
+    border: round $primary;
+    color: $text;
+}
+
+.hint {
+    color: $text-muted;
+}
+
+#lesson-feedback, #challenge-result, #mission-result {
+    color: $foreground;
+}
+
+/* authoring form */
+.field-label {
+    color: $text-muted;
+    margin: 0 2;
+    height: 1;
+}
+
+.field {
+    margin: 0 2;
+    height: 1;
+}
+
+.author-status {
+    margin: 0 2;
+    height: 1fr;
+}
