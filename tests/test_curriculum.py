@@ -24,9 +24,13 @@ def test_scaffolded_modules():
         "module5",
         "module6",
         "module7",
+        "module8",
+        "module9",
     }
     assert index["module2"].title == "Memory and Stack"
     assert index["module7"].title == "Dynamic Analysis"
+    assert index["module8"].title == "Crackme Lab"
+    assert index["module9"].title == "Exploit Lab"
     assert all(len(module.lessons) > 0 for module in index.values())
 
 

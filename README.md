@@ -26,21 +26,30 @@ Built on the master spec in
 
 ## Features
 
-- **7 fully-authored modules, 32 interactive lessons** — every lesson follows
+- **9 fully-authored modules, 42 interactive lessons** — every lesson follows
   the spec's 11-step loop (concept → intuition → analogy → visualization →
   example → execution walkthrough → prediction → response → feedback →
   challenge → reflection). Every runnable example, walkthrough, and challenge
-  is a real `.asm` file.
+  is a real `.asm` file. Module 8 (**Crackme Lab**) is built from real
+  crackmes and picoCTF challenges: XOR obfuscation, NOP-patching, flag
+  recovery from immediates, byte-transform loops, and a VM-bytecode
+  interpreter. Module 9 (**Exploit Lab**) teaches return-to-win, format leaks,
+  heap overflows, PIE leaks, and tcache poisoning — all emulated from real
+  `.asm` programs.
 - **Live emulator** — a register/flag/memory/stack model over Unicorn
   (x86-64), single-step execution, breakpoints, watchpoints, and reverse
   stepping (rewind).
-- **Sandbox** — 18 commands (`run step next continue reset registers flags
-  stack memory break watch disassemble hexdump trace explain rewind help demo`)
-  with plain-language explanations of every state change.
+- **Sandbox** — 20 commands (`run step next continue reset registers flags
+  stack memory break watch disassemble hexdump trace explain rewind loadelf
+  input help demo`) with plain-language explanations of every state change.
+  `loadelf` loads a real ELF (glibc starts via a libc shim) and `input` feeds
+  stdin bytes to the emulated process.
 - **Debugger** — step into / over / out, continue, reset, live register, flag,
   code, and stack panels.
 - **Practice & CTF challenges** — 10 challenge types across 5 difficulties,
-  auto-graded with 5-level hints, a structured re-study plan, and flags.
+  auto-graded with 5-level hints, a structured re-study plan, and flags
+  (including an 11-challenge CTF track whose OracleVM entry runs a real
+  SIGILL-decoded bytecode interpreter).
 - **Reverse Engineering lab** — toy ELF-style binaries, CFG reconstruction,
   function identification, string extraction, and **automatic binary
   patching** with emulator-based verification.
@@ -205,7 +214,7 @@ next load.
 source .venv/bin/activate
 
 make lint            # ruff check academy tests
-make test            # run the full pytest suite (168 tests)
+make test            # run the full pytest suite (177 tests)
 make demo            # smoke-test the sandbox engine
 ```
 

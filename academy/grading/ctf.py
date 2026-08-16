@@ -220,6 +220,79 @@ CTF_CHALLENGES: List[Challenge] = [
             "The code is actually correct.",
         ],
     ),
+    Challenge(
+        id="ctf11",
+        challenge_type="reverse_engineering",
+        difficulty="expert",
+        title="OracleVM bytecode decode",
+        spec=(
+            "The ADWA 'OracleVM' crackme (a stripped 64-bit ELF, see "
+            "academy/curriculum/binaries/oracle_vm) installs a SIGILL handler "
+            "that XOR-decodes a hidden 6-byte VM program against the key "
+            "b'UUUUUU' before the VM runs it. Trace the handler and the VM to "
+            "recover the decoded bytecode, then write assembly that implements "
+            "that bytecode faithfully — including the 0x10 op, which loads its "
+            "NEXT byte as an operand and skips it (so the '!' opcode at index 1 "
+            "never executes and the input is never checked). The 0xff op checks "
+            "the accumulator against 0xE4682EAE8. Leave the final accumulator "
+            "in R8."
+        ),
+        program=(
+            "mov rbx, 0x600000\n"
+            "mov byte ptr [rbx], 0x10\n"
+            "mov byte ptr [rbx+1], '!'\n"
+            "mov byte ptr [rbx+2], '2'\n"
+            "mov byte ptr [rbx+3], 'D'\n"
+            "mov byte ptr [rbx+4], 'U'\n"
+            "mov byte ptr [rbx+5], 0xff\n"
+            "mov rax, 0x1337\n"
+            "mov rcx, 0\n"
+            "loop:\n"
+            "    mov sil, byte ptr [rbx+rcx]\n"
+            "    cmp sil, 0xff\n"
+            "    je done\n"
+            "    cmp sil, 0x10\n"
+            "    je op_load\n"
+            "    cmp sil, '2'\n"
+            "    je op_two\n"
+            "    cmp sil, 'D'\n"
+            "    je op_d\n"
+            "    cmp sil, 'U'\n"
+            "    je op_u\n"
+            "    jmp loop\n"
+            "op_load:\n"
+            "    add rcx, 2\n"
+            "    jmp loop\n"
+            "op_two:\n"
+            "    add rax, 0x41424344\n"
+            "    inc rcx\n"
+            "    jmp loop\n"
+            "op_d:\n"
+            "    rol rax, 3\n"
+            "    inc rcx\n"
+            "    jmp loop\n"
+            "op_u:\n"
+            "    imul rax, 7\n"
+            "    inc rcx\n"
+            "    jmp loop\n"
+            "done:\n"
+            "    mov r8, rax\n"
+            "    mov rax, 60\n"
+            "    mov rdi, 0\n"
+            "    syscall"
+        ),
+        expected={"registers": {"r8": 0xE4682EAE8}},
+        hints=[
+            "The SIGILL handler XORs 6 bytes of .data with the key at 0x404060.",
+            "0x404060 = 'UUUUUU'; key bytes at 0x404070 are 45 74 67 11 00 AA.",
+            "Decode: 45^55=10, 74^55=21, 67^55=32, 11^55=44, 00^55=55, AA^55=FF.",
+            "0x10 is a load-operand op: it consumes the next byte ('!' at index "
+            "1) and advances the pc by 2 — the XOR-input op never runs.",
+            "The check ignores input: acc starts 0x1337, add 0x41424344, rol 3, "
+            "*7, compare 0xE4682EAE8.",
+        ],
+        flag="ASM{10_21_32_44_55_ff}",
+    ),
 ]
 
 

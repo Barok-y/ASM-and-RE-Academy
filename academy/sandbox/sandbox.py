@@ -36,6 +36,8 @@ class Sandbox:
         "watch",
         "disassemble",
         "hexdump",
+        "input",
+        "loadelf",
         "trace",
         "explain",
         "rewind",
@@ -171,6 +173,29 @@ class Sandbox:
 
     def cmd_hexdump(self, addr: str, size: str = "16") -> CommandResult:
         return self.cmd_memory(addr, size)
+
+    def cmd_input(self, data: str) -> CommandResult:
+        self.executor.set_input(data.encode())
+        return CommandResult("input", f"stdin set to {data!r}")
+
+    def cmd_loadelf(self, path: str) -> CommandResult:
+        try:
+            self.executor.load_elf(path)
+        except Exception as exc:
+            return CommandResult("loadelf", f"failed to load {path}: {exc}")
+        info = self.executor.elf_info() or {}
+        imports = ", ".join(str(i) for i in info.get("imports", []) or [])
+        lines = [
+            f"loaded ELF: {info.get('path')}",
+            f"  entry:   {info.get('entry', 0):#x}",
+            f"  type:    {'PIE' if info.get('pie') else 'ET_EXEC'}",
+            f"  imports: {imports or '(none)'}",
+            f"  status:  {self.executor.status}",
+            "",
+            "hint: 'run' executes it; feed it stdin with 'input <bytes>' before "
+            "running, and 'registers' / 'disassemble' inspect it.",
+        ]
+        return CommandResult("loadelf", "\n".join(lines))
 
     def cmd_disassemble(self, count: str = "10", addr: str = "") -> CommandResult:
         n = int(count)

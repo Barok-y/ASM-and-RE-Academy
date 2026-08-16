@@ -38,6 +38,20 @@ ACHIEVEMENTS: List[Achievement] = [
         module="module4",
     ),
     Achievement(
+        achievement_id="crackme_analyst",
+        name="Crackme Analyst",
+        description="Finish the Crackme Lab",
+        event="module_complete",
+        module="module8",
+    ),
+    Achievement(
+        achievement_id="exploit_artist",
+        name="Exploit Artist",
+        description="Finish the Exploit Lab",
+        event="module_complete",
+        module="module9",
+    ),
+    Achievement(
         achievement_id="reverse_engineer",
         name="Reverse Engineer",
         description="Analyze a toy binary",

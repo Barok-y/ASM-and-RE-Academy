@@ -97,6 +97,27 @@ def test_achievement_conditions_module_and_count(tmp_path):
     assert system.is_unlocked("hot_streak")
 
 
+def test_achievement_module8_and_module9_badges(tmp_path):
+    system = AchievementSystem(JsonStore(tmp_path / "ach.json"))
+    system.check_event("module_complete", {"module": "module8"})
+    assert system.is_unlocked("crackme_analyst")
+    assert not system.is_unlocked("exploit_artist")
+    system.check_event("module_complete", {"module": "module9"})
+    assert system.is_unlocked("exploit_artist")
+
+
+def test_mark_lesson_complete_fires_module_complete(tmp_path):
+    from academy.ui import AppState
+
+    state = AppState(tmp_path)
+    for lesson in range(1, 6):
+        state.mark_lesson_complete(f"module9.lesson{lesson}", "module9")
+        if lesson < 5:
+            assert not state.achievements.is_unlocked("exploit_artist"), lesson
+    assert state.achievements.is_unlocked("exploit_artist")
+    assert state.achievements.is_unlocked("crackme_analyst") is False
+
+
 def test_sqlite_store_attempts(tmp_path):
     store = SqliteStore(tmp_path / "attempts.db")
     store.log_attempt("lesson-3-q2", "registers", True, hints_used=1)

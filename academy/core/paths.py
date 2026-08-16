@@ -24,19 +24,29 @@ LEARNING_PATHS: List[LearningPath] = [
     LearningPath(
         "path_a",
         "Beginner Assembly",
-        ["module1", "module2", "module3", "module4", "module5", "module6", "module7"],
+        [
+            "module1",
+            "module2",
+            "module3",
+            "module4",
+            "module5",
+            "module6",
+            "module7",
+            "module8",
+            "module9",
+        ],
         "Core curriculum from first program through ABI and OS internals.",
     ),
     LearningPath(
         "path_b",
         "Reverse Engineering",
-        ["module1", "module2", "module4", "module5", "module7"],
+        ["module1", "module2", "module4", "module5", "module7", "module8", "module9"],
         "Assembly fundamentals plus RE lab and binary patching.",
     ),
     LearningPath(
         "path_c",
         "CTF Preparation",
-        ["module1", "module2", "module4", "module5", "module6", "module7"],
+        ["module1", "module2", "module4", "module5", "module6", "module7", "module8", "module9"],
         "Focus on challenges, exploits, and patching.",
     ),
     LearningPath(

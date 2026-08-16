@@ -3,6 +3,7 @@ watchpoints, reverse stepping, and state snapshots."""
 
 from __future__ import annotations
 
+import struct
 from collections.abc import Sequence
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -12,9 +13,11 @@ from unicorn import (
     UC_ARCH_X86,
     UC_ERR_FETCH_UNMAPPED,
     UC_MODE_64,
+    UC_PROT_ALL,
     Uc,
     UcError,
 )
+from unicorn.x86_const import UC_X86_REG_FS_BASE
 
 from . import flags as fflags
 from . import registers as regs
@@ -40,6 +43,7 @@ DEFAULT_SEGMENTS: Sequence[Segment] = (
 STACK_TOP = 0x7FFFF00000 + 0x20000
 
 _SYSCALL_EXIT = (60, 231)
+_SYSCALL_READ = 0
 _SYSCALL_WRITE = 1
 
 
@@ -68,6 +72,9 @@ class Executor:
         self._error: Optional[str] = None
         self.exit_code: Optional[int] = None
         self._loaded: Optional[Tuple[bytes, int]] = None
+        self._elf: Optional[object] = None
+        self._shim: Optional[object] = None
+        self.files: Dict[str, bytes] = {}
         self.last_instruction: Optional[str] = None
         self._new_engine()
         self.reset()
@@ -85,11 +92,34 @@ class Executor:
 
     @property
     def loaded(self) -> bool:
-        return self._loaded is not None
+        return self._loaded is not None or self._elf is not None
+
+    def elf_info(self) -> Optional[Dict[str, object]]:
+        if self._elf is None:
+            return None
+        binary = self._elf
+        low, high = binary.load_range
+        return {
+            "path": binary.path,
+            "entry": binary.entry,
+            "pie": binary.is_pie,
+            "load_start": low,
+            "load_end": high,
+            "imports": [binary.imports.get(addr) for addr in sorted(binary.imports)],
+            "symbols": dict(binary.symbols),
+            "plt_stubs": dict(self._shim.stubs) if self._shim else {},
+        }
+
+    def elf_strings(self, addr: int, limit: int = 256) -> str:
+        if self._elf is None:
+            return ""
+        return self._elf.strings(addr, limit)
 
     def reset(self) -> None:
         self._new_engine()
         self._output: bytes = b""
+        self._input: bytes = b""
+        self._input_pos = 0
         self._history: List[StateSnapshot] = []
         self._watch_prev = {}
         self.watch_events = []
@@ -98,11 +128,106 @@ class Executor:
         self._step_index = 0
         self.status = STATUS_READY
         self.last_instruction = None
-        if self._loaded is not None:
+        if self._elf is not None:
+            self._reload_elf()
+        elif self._loaded is not None:
             code, entry = self._loaded
             self._memory.write(self._uc, self._memory.segment("text").base, code)
             regs.write_register(self._uc, "rip", entry)
         self._history = [self._snapshot()]
+
+    def load_elf(
+        self,
+        path: str,
+        input: Optional[bytes] = None,
+        files: Optional[Dict[str, bytes]] = None,
+    ) -> None:
+        """Load a real ELF binary (crackme) into the emulator.
+
+        Replaces the default segmented layout with the binary's PT_LOAD
+        segments plus shim housekeeping regions, and installs the libc shim
+        so PLT calls to libc are emulated in Python.
+        """
+        from .elf import load_elf as parse_elf
+        from .libc_shim import (
+            LibcShim,
+        )
+
+        binary = parse_elf(path)
+        self._segments = self._elf_segments(binary)
+        self._memory = MemoryModel(self._segments)
+        self._elf = binary
+        self.files = dict(files or {})
+        self._shim = LibcShim(self, binary)
+        self.reset()
+        if input is not None:
+            self.set_input(input)
+
+    @staticmethod
+    def _elf_segments(binary: object) -> List[Segment]:
+        from .libc_shim import SHIM_ARENA, SHIM_ARENA_SIZE, TRAMPOLINE
+
+        segments: List[Segment] = []
+        for i, seg in enumerate(binary.segments):
+            if seg.vaddr == 0:
+                continue  # ELF headers only; Unicorn refuses to map at 0
+            base = seg.vaddr & ~0xFFF
+            end = (seg.vaddr + seg.memsz + 0xFFF) & ~0xFFF
+            segments.append(
+                Segment(
+                    f"elf{i}",
+                    base,
+                    end - base,
+                    kind="elf",
+                    writable=bool(seg.flags & 0x2),
+                    perms=seg.perms,
+                )
+            )
+        segments.append(
+            Segment("shim", SHIM_ARENA, SHIM_ARENA_SIZE, kind="data", perms=UC_PROT_ALL)
+        )
+        segments.append(
+            Segment("tramp", TRAMPOLINE, 0x1000, kind="code", perms=UC_PROT_ALL)
+        )
+        segments.append(
+            Segment("stack", 0x7FFFF00000, 0x20000, kind="stack", perms=UC_PROT_ALL)
+        )
+        return segments
+
+    def _reload_elf(self) -> None:
+        binary = self._elf
+        for seg in binary.segments:
+            chunk = binary.data[seg.offset : seg.offset + seg.filesz]
+            if chunk:
+                try:
+                    self._memory.write(self._uc, seg.vaddr, chunk)
+                except UcError:
+                    pass
+        from .libc_shim import FS_BASE, TRAMPOLINE
+
+        self._uc.reg_write(UC_X86_REG_FS_BASE, FS_BASE)
+        try:
+            self._memory.write(self._uc, TRAMPOLINE, b"\xc3" * 0x1000)
+        except UcError:
+            pass
+        rsp = self.get_register("rsp")
+        try:
+            self._memory.write(self._uc, rsp, struct.pack("<Q", 1))
+            self._memory.write(self._uc, rsp + 8, struct.pack("<Q", 0x601F80))
+            self._memory.write(self._uc, rsp + 16, struct.pack("<Q", 0))
+            self._memory.write(self._uc, 0x601F80, struct.pack("<QQ", 0x601F90, 0))
+            self._memory.write(self._uc, 0x601F90, b"./prog\x00")
+        except UcError:
+            pass
+        shim = self._shim
+        if shim is not None:
+            shim.clear()
+            shim.install()
+        regs.write_register(self._uc, "rip", binary.entry)
+
+    def set_input(self, data: bytes) -> None:
+        self._input = bytes(data)
+        self._input_pos = 0
 
     def load_asm(self, source: str, entry: int | None = None) -> None:
         try:
@@ -257,7 +382,18 @@ class Executor:
             self.exit_code = a1 & 0xFF
             self.status = STATUS_EXITED
             return
-        if number == _SYSCALL_WRITE and a1 in (1, 2):
+        if number == _SYSCALL_READ and a1 == 0:
+            remaining = len(self._input) - self._input_pos
+            count = min(max(a3, 0), max(remaining, 0))
+            chunk = self._input[self._input_pos : self._input_pos + count]
+            self._input_pos += count
+            try:
+                self._memory.write(self._uc, a2, chunk)
+            except UcError:
+                count = 0
+                chunk = b""
+            regs.write_register(self._uc, "rax", count)
+        elif number == _SYSCALL_WRITE and a1 in (1, 2):
             try:
                 chunk = self._memory.read(self._uc, a2, a3)
             except UcError:
@@ -321,6 +457,12 @@ class Executor:
 
     def segment_base(self, name: str) -> int:
         return self._memory.segment(name).base
+
+    def memory_read(self, addr: int, size: int) -> bytes:
+        return self._memory.read(self._uc, addr, size)
+
+    def memory_write(self, addr: int, data: bytes) -> None:
+        self._memory.write(self._uc, addr, data)
 
     def _resolve(self, name_or_addr: str | int) -> int:
         if isinstance(name_or_addr, str):

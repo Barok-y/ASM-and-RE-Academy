@@ -69,10 +69,18 @@ class AppState:
             self.gamification.record("", correct=False)
 
     def mark_lesson_complete(self, lesson_id: str, module_id: str) -> None:
+        from academy.curriculum import all_modules
+
         progress = self.session.load_progress()
         progress.setdefault("lessons", {})[lesson_id] = "complete"
         self.session.save_progress(progress)
         self.achievements.check_event("lesson_complete", {"lesson": lesson_id})
+        completed = set(progress.get("lessons", {}))
+        module = next((m for m in all_modules() if m.id == module_id), None)
+        if module is not None and all(
+            lesson.id in completed for lesson in module.lessons
+        ):
+            self.achievements.check_event("module_complete", {"module": module_id})
         self.gamification.record("lesson_complete", correct=True)
 
     def save_lesson_position(self, lesson_id: str, step_index: int) -> None:

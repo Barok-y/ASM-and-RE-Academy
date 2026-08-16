@@ -73,6 +73,9 @@ def _run_and_collect(program: str, expected: Dict[str, Any]) -> Dict[Tuple[str, 
     ex = Executor()
     try:
         ex.load_asm(program)
+        if "input" in expected:
+            value = expected["input"]
+            ex.set_input(value.encode() if isinstance(value, str) else value)
         ex.run(max_steps=10_000)
     except ValueError:
         return {}
@@ -86,6 +89,15 @@ def _run_and_collect(program: str, expected: Dict[str, Any]) -> Dict[Tuple[str, 
         if isinstance(value, str):
             value = value.encode()
         collected[("output", "stdout")] = ex.output
+    for addr, value in expected.get("memory", {}).items():
+        if isinstance(value, str):
+            value = value.encode()
+        if isinstance(value, int):
+            value = bytes([value])
+        try:
+            collected[("memory", int(addr))] = ex.memory_read(int(addr), len(value))
+        except Exception:
+            collected[("memory", int(addr))] = None
     return collected
 
 
@@ -222,6 +234,15 @@ class Grader:
             if got != want:
                 correctness = 0.0
                 wrong.append(f"output: expected {want!r}, got {got!r}")
+        for addr, want in expected.get("memory", {}).items():
+            if isinstance(want, str):
+                want = want.encode()
+            if isinstance(want, int):
+                want = bytes([want])
+            got = actual.get(("memory", int(addr)))
+            if got != want:
+                correctness = 0.0
+                wrong.append(f"memory @{addr:#x}: expected {want!r}, got {got!r}")
 
         submitted_count = _instruction_count(submission)
         reference_count = _instruction_count(challenge.program)

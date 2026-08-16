@@ -130,3 +130,25 @@ def test_next_steps_over_call():
     r = sb.execute("next")
     assert sb.executor.get_register("rax") == 6
     assert r.command == "next"
+
+
+def test_loadelf_runs_bundled_oracle():
+    import os
+
+    oracle = os.path.join(
+        os.path.dirname(__file__), "..", "academy", "curriculum", "binaries", "oracle_vm"
+    )
+    sb = Sandbox()
+    r = sb.execute(f"loadelf {oracle}")
+    assert "entry:" in r.text
+    assert "imports:" in r.text
+    sb.execute("input anything")
+    r = sb.execute("run")
+    assert sb.executor.status == "exited"
+    assert b"Correct flag!" in sb.executor.output
+
+
+def test_loadelf_rejects_missing_file():
+    sb = Sandbox()
+    r = sb.execute("loadelf /nonexistent/oracle_vm")
+    assert "failed to load" in r.text

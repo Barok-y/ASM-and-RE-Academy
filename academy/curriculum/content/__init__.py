@@ -10,6 +10,8 @@ from .module4 import module4
 from .module5 import module5
 from .module6 import module6
 from .module7 import module7
+from .module8 import module8
+from .module9 import module9
 
 
 def all_modules() -> List[Module]:
@@ -21,6 +23,8 @@ def all_modules() -> List[Module]:
         module5(),
         module6(),
         module7(),
+        module8(),
+        module9(),
     ]
 
 

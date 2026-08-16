@@ -23,6 +23,12 @@ def _flatten_expected(expected: Dict[str, object]) -> Dict[Tuple[str, str], obje
         if isinstance(value, str):
             value = value.encode()
         flat[("output", "stdout")] = value
+    for addr, value in expected.get("memory", {}).items():
+        if isinstance(value, str):
+            value = value.encode()
+        if isinstance(value, int):
+            value = bytes([value])
+        flat[("memory", int(addr))] = value
     return flat
 
 
@@ -108,6 +114,9 @@ class LessonSession:
                 raise
             ex = Executor()
             ex.load_asm(synthesized)
+        if "input" in step.expected:
+            raw = step.expected["input"]
+            ex.set_input(raw.encode() if isinstance(raw, str) else raw)
         ex.run()
         diffs = []
         for (group, name), want in expected.items():
@@ -115,6 +124,11 @@ class LessonSession:
                 got = ex.get_register(name)
             elif group == "flags":
                 got = ex.get_flag(name)
+            elif group == "memory":
+                try:
+                    got = ex.memory_read(name, len(want))
+                except Exception:
+                    got = None
             else:
                 got = ex.output
             if got != want:
@@ -126,9 +140,10 @@ class LessonSession:
     @staticmethod
     def _synthesize_value_answer(program: str, expected: dict) -> Optional[str]:
         """Turn a plain numeric answer into assembly when the expected state is
-        a single register. Returns None if the answer isn't a number."""
+        a single register. Returns None if the answer isn't a number or other
+        groups (output/memory) are asserted."""
         regs = {name: value for (group, name), value in expected.items() if group == "registers"}
-        if len(regs) != 1:
+        if len(regs) != 1 or len(expected) != 1:
             return None
         (reg, want), = regs.items()
         text = program.strip().lower().replace("_", "").replace(",", "").replace(" ", "")
