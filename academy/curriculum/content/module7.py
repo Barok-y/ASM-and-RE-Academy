@@ -57,30 +57,36 @@ def lesson_breakpoints() -> Lesson:
             ),
             _step(
                 "prediction",
-                "A breakpoint pauses execution...",
-                options=[
-                    "at a chosen address",
-                    "only at the start of the program",
-                    "at random points",
-                    "only after 1000 instructions",
-                ],
+                "Press R to run the example: a breakpoint on 'mov rbx, rax' would pause "
+                "after the second ADD, when RAX = 5+3 = 8. Read the final panel — what "
+                "value ends up in RBX?",
+                program=read_asm("module7/lesson1_breakpoints/example.asm"),
+                options=["8", "5", "3", "14"],
                 answer=0,
                 feedback={
-                    1: "You can break anywhere, not just at the start.",
-                    2: "Breakpoints are deterministic addresses, not random.",
-                    3: "Count-based stopping is a different feature (a step count).",
+                    1: "5 is RAX's starting value, before the two ADDs.",
+                    2: "3 is one of the increments, not the result.",
+                    3: "14 would double; the adds total 8, not 14.",
                 },
+                hint="Press R — RBX copies the observed RAX = 8.",
             ),
             _step(
                 "response",
-                "What single-byte instruction do debuggers typically insert for "
-                "a breakpoint?",
-                answer=1,
-                options=["nop", "int3"],
+                "Run the challenge (press R): the breakpoint sits on 'mov rbx, rax', and "
+                "RAX is 8 when execution pauses there. Type the value RBX ends up "
+                "holding.",
+                program=read_asm("module7/lesson1_breakpoints/challenge.asm"),
+                keywords=["8"],
+                model_answer="8 — the pause happens after the ADDs, so RAX = 8 is the "
+                    "inspection point; 'mov rbx, rax' then copies exactly the value the "
+                    "breakpoint exposed.",
+                hint="After R, RBX shows the value seen at the breakpoint.",
             ),
             _step(
                 "feedback",
-                "int3 (0xCC) triggers the breakpoint trap the debugger handles.",
+                "RBX = 8. The breakpoint froze execution when RAX reached 5+3, exposing "
+                "the state to inspect; the program then continued and copied that state "
+                "into RBX. Choosing the right pause point is the whole skill.",
             ),
             _step(
                 "challenge",
@@ -146,25 +152,35 @@ def lesson_memory_inspection() -> Lesson:
             ),
             _step(
                 "prediction",
-                "After writing 0x10 at [rbx], 0x20 at [rbx+1], 0x30 at "
-                "[rbx+2], what is byte [rbx+1]?",
-                options=["0x10", "0x20", "0x30", "0x00"],
-                answer=1,
+                "Press R to run the challenge: bytes 0x10, 0x20, 0x30 are written to "
+                "consecutive addresses, then the SECOND byte is loaded into RBX. Read the "
+                "final panel — what value ends up in RBX?",
+                program=read_asm("module7/lesson2_memory_inspection/challenge.asm"),
+                options=["0x20", "0x10", "0x30", "0x00"],
+                answer=0,
                 feedback={
-                    0: "0x10 is at offset +0.",
-                    2: "0x30 is at offset +2.",
-                    3: "Each byte was explicitly written, not zeroed.",
+                    1: "0x10 is at offset +0, the first written byte.",
+                    2: "0x30 is at offset +2, the third written byte.",
+                    3: "Each byte was explicitly written; nothing reads as 0.",
                 },
+                hint="Press R — loading [rbx+1] yields the byte at the second slot.",
             ),
             _step(
                 "response",
-                "Memory inspection reads bytes at a given...",
-                answer=1,
-                options=["register value only", "address"],
+                "Run the example (press R): it writes 0xAA, 0xBB, 0xCC to memory at "
+                "0x600000, 0x600001, 0x600002. Type the hex value (with 0x) stored at "
+                "offset +1 — the second byte of the structure.",
+                program=read_asm("module7/lesson2_memory_inspection/example.asm"),
+                keywords=["0xbb", "bb", "187"],
+                model_answer="0xBB — offset +1 received the 0xBB write; a hexdump of the "
+                    "three bytes reads aa bb cc.",
+                hint="After R, visualize the hexdump: aa bb cc in order.",
             ),
             _step(
                 "feedback",
-                "Inspection is address-driven: you read the bytes at an address.",
+                "0xBB sits at [rbx+1]. Reading memory byte-by-byte (aa bb cc) is exactly "
+                "the hexdump view a debugger gives you — addresses drive the inspection, "
+                "and each offset within the structure names one field.",
             ),
             _step(
                 "challenge",
@@ -232,32 +248,36 @@ def lesson_runtime_analysis() -> Lesson:
             ),
             _step(
                 "prediction",
-                "A profile shows one loop body executed 100,000 times while "
-                "everything else ran a handful of times. Where should an "
-                "optimizer look first?",
-                options=[
-                    "inside that loop",
-                    "in the entry code",
-                    "in error handling",
-                    "everywhere equally",
-                ],
+                "Press R to run this trace: a straight-line calculation, 2*3+1, followed "
+                "by a save into R8. Read the final panel — what value ends up in R8?",
+                program="mov rax, 2\nmov rbx, 3\nimul rax, rbx\nadd rax, 1\nmov r8, rax\n"
+                        "mov rax, 60\nmov rdi, 0\nsyscall",
+                options=["7", "6", "5", "1"],
                 answer=0,
                 feedback={
-                    1: "The entry code runs once; optimize the hot path.",
-                    2: "Error paths rarely run.",
-                    3: "Optimization effort should follow measured frequency.",
+                    1: "6 is the product before the final +1.",
+                    2: "5 would be 2+3; the multiply runs first.",
+                    3: "1 is the added constant, not the total.",
                 },
+                hint="Press R — stepping the trace shows 2*3+1 = 7.",
             ),
             _step(
                 "response",
-                "Runtime analysis records a program's...",
-                answer=1,
-                options=["bytes on disk", "actual behavior as it executes"],
+                "Run the challenge (press R): the loop body executes once per decrement. "
+                "Type the iteration count the trace would report — the value that ends "
+                "up in RBX.",
+                program=read_asm("module7/lesson3_runtime_analysis/challenge.asm"),
+                keywords=["4"],
+                model_answer="4 — the counter runs 4, 3, 2, 1; each pass increments RBX "
+                    "and the 'jne' falls through once RCX hits 0, so the body ran 4 "
+                    "times.",
+                hint="After R, RBX shows the number of body executions.",
             ),
             _step(
                 "feedback",
-                "Dynamic analysis captures behavior over time, unlike static "
-                "analysis of the file alone.",
+                "RBX = 4 — the trace counted four executions of the loop body. That "
+                "count, not static reading of the file, is what tells an optimizer which "
+                "path is hot — the core of dynamic analysis.",
             ),
             _step(
                 "challenge",

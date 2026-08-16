@@ -57,29 +57,35 @@ def lesson_call_ret() -> Lesson:
             ),
             _step(
                 "prediction",
-                "After 'call f', what does RET do?",
-                options=[
-                    "pops the return address into RIP",
-                    "jumps to a fixed address",
-                    "pushes the return address",
-                    "clears the stack",
-                ],
+                "Press R to run the example: RAX = 5, CALL enters myfunc (which adds 10), "
+                "RET comes back, and R8 copies RAX. Read the final panel — what value ends "
+                "up in R8?",
+                program=read_asm("module4/lesson1_call_ret/example.asm"),
+                options=["15", "5", "10", "50"],
                 answer=0,
                 feedback={
-                    1: "RET follows the address left by the matching CALL.",
-                    2: "Pushing the return address is CALL's job.",
-                    3: "RET removes only the top item, which is the return address.",
+                    1: "5 is the value BEFORE the call; the callee then changed it.",
+                    2: "10 is the size of the add, not the final value.",
+                    3: "The callee adds, it does not multiply.",
                 },
+                hint="Press R — the callee adds 10 to RAX, then RET hands control back.",
             ),
             _step(
                 "response",
-                "Which instruction pushes the return address onto the stack?",
-                answer=0,
-                options=["CALL", "RET"],
+                "Run the challenge (press R): RAX = 5, CALL addten (add 10), then CALL "
+                "double_it (double). Type the value that ends up in R8.",
+                program=read_asm("module4/lesson1_call_ret/challenge.asm"),
+                keywords=["30"],
+                model_answer="30 — addten returned 15 to the instruction after its CALL, "
+                    "then double_it doubled it to 30; each RET returned to the right spot "
+                    "by popping its own return address.",
+                hint="After R, R8 shows (5+10)*2 = 30.",
             ),
             _step(
                 "feedback",
-                "CALL pushes the return address; RET pops it back.",
+                "R8 = 30. Two CALLs pushed two return addresses onto the stack, and each "
+                "RET popped the correct one back into RIP. That stack discipline is what "
+                "lets calls nest and returns land exactly where they should.",
             ),
             _step(
                 "challenge",
@@ -146,24 +152,33 @@ def lesson_sysv_abi() -> Lesson:
             ),
             _step(
                 "prediction",
-                "In System V, where does the 1st integer argument travel?",
-                options=["RDI", "RAX", "RSP", "RDX"],
+                "Press R to run the challenge: RDI = 6, RSI = 4, and the callee computes "
+                "rdi*rsi+1. Read the final panel — what value ends up in RBX?",
+                program=read_asm("module4/lesson2_sysv_abi/challenge.asm"),
+                options=["25", "10", "24", "30"],
                 answer=0,
                 feedback={
-                    1: "RAX carries the RETURN value, not the first argument.",
-                    2: "The stack only carries the 7th argument onward.",
-                    3: "RDX is the 3rd argument slot.",
+                    1: "6+4 = 10 is a sum; the callee multiplies then adds one.",
+                    2: "6*4 = 24 misses the final +1.",
+                    3: "30 would double the result; the callee does not.",
                 },
+                hint="Press R — 6*4+1 = 25 lands in RBX.",
             ),
             _step(
                 "response",
-                "Where does the callee leave its return value?",
-                answer=1,
-                options=["RDI", "RAX"],
+                "Run the example (press R): the callee receives 4 in RDI and 3 in RSI, and "
+                "returns rdi + rsi. Type the value that ends up in R8.",
+                program=read_asm("module4/lesson2_sysv_abi/example.asm"),
+                keywords=["7"],
+                model_answer="7 — the callee moved RDI into RAX, added RSI, and returned "
+                    "4+3 = 7 in RAX; the caller copied that into R8 per the ABI.",
+                hint="After R, R8 shows 4+3 = 7.",
             ),
             _step(
                 "feedback",
-                "RAX is the System V return-value register.",
+                "R8 = 7. The handoff ran on contract: arguments in RDI/RSI, result in RAX, "
+                "caller reads it after the call. That shared convention is what lets any "
+                "two functions call each other.",
             ),
             _step(
                 "challenge",
@@ -235,29 +250,35 @@ def lesson_callee_saved() -> Lesson:
             ),
             _step(
                 "prediction",
-                "A callee wants to use RBX temporarily. What must it do?",
-                options=[
-                    "save RBX (push) and restore it (pop) before returning",
-                    "nothing, RBX is caller-saved",
-                    "zero RBX before returning",
-                    "move its value into RAX and hope",
-                ],
+                "Press R to run the example: RBX = 42 enters 'clobber', which uses RBX "
+                "internally (999) but pushes/pops it before returning. Read the final "
+                "panel — what value ends up in R8 (the copy of RBX)?",
+                program=read_asm("module4/lesson3_callee_saved/example.asm"),
+                options=["42", "999", "0", "60"],
                 answer=0,
                 feedback={
-                    1: "RBX is callee-saved; it must be preserved.",
-                    2: "Zeroing would violate the preservation contract.",
-                    3: "That does not restore the caller's original value.",
+                    1: "999 is the internal garbage value; the pop restored 42 first.",
+                    2: "POP restores the saved value; it never leaves RBX zeroed.",
+                    3: "60 is the exit syscall number, consumed at the very end.",
                 },
+                hint="Press R — RBX (and its copy R8) show the preserved 42.",
             ),
             _step(
                 "response",
-                "Which of these registers is CALLEE-saved in System V?",
-                answer=1,
-                options=["RDI", "RBX"],
+                "Run the challenge (press R): the CALLER saves RBX = 77 before the call "
+                "and restores it after. Type the value that ends up in RBX.",
+                program=read_asm("module4/lesson3_callee_saved/challenge.asm"),
+                keywords=["77"],
+                model_answer="77 — the caller pushed 77, the callee set RBX = 999, and the "
+                    "caller popped 77 back, so its value survived the call untouched.",
+                hint="After R, RBX shows 77 — saved and restored by the caller.",
             ),
             _step(
                 "feedback",
-                "RBX is callee-saved; RDI is a caller-saved argument register.",
+                "RBX = 77 — the caller bore the cost by pushing and popping its own value. "
+                "That is the caller-saved pattern: whoever needs a value across a call "
+                "preserves it, because callees are free to destroy RDI, RAX, RCX and "
+                "friends.",
             ),
             _step(
                 "challenge",
@@ -327,24 +348,34 @@ def lesson_stack_alignment() -> Lesson:
             ),
             _step(
                 "prediction",
-                "Right after a CALL pushes the return address, RSP % 16 is...",
-                options=["0", "8", "16", "undefined"],
-                answer=1,
+                "Press R to run the challenge: the code pads RSP by 8, passes 3 in RDI, "
+                "and calls times_seven (rdi*7). Read the final panel — what value ends up "
+                "in RBX?",
+                program=read_asm("module4/lesson4_stack_alignment/challenge.asm"),
+                options=["21", "17", "7", "24"],
+                answer=0,
                 feedback={
-                    0: "Before the call RSP was 0 mod 16; the 8-byte push makes it 8.",
-                    2: "RSP is never congruent to 16 mod 16; it is 0 or 8.",
-                    3: "The ABI pins it down precisely.",
+                    1: "17 would be rdi*5+2; the callee multiplies by 7 exactly.",
+                    2: "7 is one argument, not the returned product.",
+                    3: "24 is stack padding math, not the function's result.",
                 },
+                hint="Press R — 3*7 = 21 lands in RBX.",
             ),
             _step(
                 "response",
-                "What does 'sub rsp, N' do at the start of a prologue?",
-                answer=0,
-                options=["reserves N bytes for locals", "pushes the return address"],
+                "Run the example (press R): RDI carries 5 into align_me, which returns "
+                "rdi + 1. Type the value that ends up in R8.",
+                program=read_asm("module4/lesson4_stack_alignment/example.asm"),
+                keywords=["6"],
+                model_answer="6 — align_me read RDI = 5, returned 5+1 = 6 in RAX, and the "
+                    "caller copied it to R8 after restoring the stack.",
+                hint="After R, R8 shows 5+1 = 6.",
             ),
             _step(
                 "feedback",
-                "SUB RSP carves out the local area; CALL handles the return address.",
+                "R8 = 6 — the argument travelled in RDI, the callee left rdi+1 in RAX, and "
+                "the caller saved it before the exit syscall. The 8-byte SUB kept RSP "
+                "16-byte aligned at the CALL, so the ABI contract held.",
             ),
             _step(
                 "challenge",

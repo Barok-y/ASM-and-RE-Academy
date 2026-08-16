@@ -54,24 +54,35 @@ def lesson_bitwise() -> Lesson:
             ),
             _step(
                 "prediction",
-                "What does 'xor rax, rax' do?",
-                options=["zeroes RAX", "sets RAX to -1", "flips all bits once", "no-op"],
+                "Press R to run the example: RAX walks 0xAB -> 0xA0 (AND mask) -> 0xA5 "
+                "(OR mask) -> 0xAA (XOR toggle). Read the final panel — what value ends up "
+                "in R8?",
+                program=read_asm("module5/lesson1_bitwise/example.asm"),
+                options=["0xAA", "0xA0", "0xA5", "0xAB"],
                 answer=0,
                 feedback={
-                    1: "NOT would make -1; XOR of a value with itself is always 0.",
-                    2: "XOR toggles twice per bit, returning to the original - 0.",
-                    3: "It changes every bit, and it is the fastest way to zero.",
+                    1: "0xA0 is the intermediate AND result, before the OR and XOR.",
+                    2: "0xA5 is the result after the OR, before the final XOR.",
+                    3: "0xAB is the starting value, before any mask.",
                 },
+                hint="Press R — the final XOR toggles the low nibble to 0xAA.",
             ),
             _step(
                 "response",
-                "Which operation clears a selected bit?",
-                answer=1,
-                options=["OR", "AND with a mask that has a 0 there"],
+                "Run the challenge (press R): clear bit 2 (0x04) from 0xFF with AND, then "
+                "toggle bit 0 (0x01) with XOR. Type the hex value (with 0x) that ends up "
+                "in RBX.",
+                program=read_asm("module5/lesson1_bitwise/challenge.asm"),
+                keywords=["0xfa", "fa", "250"],
+                model_answer="0xFA — 0xFF & 0xFB = 0xFB clears bit 2; 0xFB ^ 0x01 = 0xFA "
+                    "toggles bit 0 (that is 250 decimal).",
+                hint="After R, RBX shows 0xFA.",
             ),
             _step(
                 "feedback",
-                "AND with a 0 in that position forces the bit to 0.",
+                "RBX = 0xFA. AND with a 0 in bit 2's position forced that bit to 0 "
+                "(0xFF -> 0xFB), and XOR toggled bit 0 (0xFB -> 0xFA). Masks clear, set, "
+                "and flip individual bits this way.",
             ),
             _step(
                 "challenge",
@@ -137,24 +148,34 @@ def lesson_shifts() -> Lesson:
             ),
             _step(
                 "prediction",
-                "What is 'shl rax, 4' equivalent to?",
-                options=["rax * 16", "rax / 16", "rax + 4", "rax & 0xF"],
+                "Press R to run the example: 3 is shifted left by 3 (multiply by 8), then "
+                "right by 2 (divide by 4). Read the final panel — what value ends up in "
+                "R8?",
+                program=read_asm("module5/lesson2_shifts/example.asm"),
+                options=["6", "8", "24", "3"],
                 answer=0,
                 feedback={
-                    1: "Shifting right divides; shifting left multiplies.",
-                    2: "SHL does not add; it scales by a power of two.",
-                    3: "That would mask the low nibble, not scale.",
+                    1: "8 is the result of the left shift alone (3*8).",
+                    2: "24 is the value before the right shift divides it by 4.",
+                    3: "3 is the starting value; the shifts always change it.",
                 },
+                hint="Press R — 3*8 = 24, then 24/4 = 6.",
             ),
             _step(
                 "response",
-                "Which shift keeps the sign bit for signed values?",
-                answer=1,
-                options=["SHR", "SAR"],
+                "Run the challenge (press R): it multiplies 7 by 10 without MUL, using "
+                "(7<<3)+(7<<1). Type the total that ends up in RBX.",
+                program=read_asm("module5/lesson2_shifts/challenge.asm"),
+                keywords=["70"],
+                model_answer="70 — SHL 7 by 3 gives 56 (x8), SHL by 1 gives 14 (x2), and "
+                    "56+14 = 70; shift-and-add reproduces the multiplication.",
+                hint="After R, RBX shows the shift-and-add total.",
             ),
             _step(
                 "feedback",
-                "SAR (shift arithmetic right) copies the sign bit; SHR zero-fills.",
+                "RBX = 70. A left shift scales by a power of two (x8 and x2 here), and "
+                "adding the two shifted copies multiplied by 10. Shifts buy cheap "
+                "multiplication by constants — the technique compiled code uses.",
             ),
             _step(
                 "challenge",
@@ -221,24 +242,35 @@ def lesson_syscalls() -> Lesson:
             ),
             _step(
                 "prediction",
-                "Which register carries the syscall number on x86-64?",
-                options=["RAX", "RDI", "RSI", "RSP"],
+                "Press R to run the challenge: RAX = 1 (write), RDI = 1 (stdout), RSI = "
+                "buffer, RDX = 3, and the buffer holds 'A', 'B', newline. Read the status "
+                "line and OUTPUT — what did the program print?",
+                program=read_asm("module5/lesson3_syscalls/challenge.asm"),
+                options=["AB", "Hi", "BA", "nothing at all"],
                 answer=0,
                 feedback={
-                    1: "RDI is the first argument, e.g. the file descriptor.",
-                    2: "RSI is the second argument, e.g. the buffer pointer.",
-                    3: "RSP is the stack pointer, never a syscall number.",
+                    1: "'Hi' is the example's buffer, not this program's.",
+                    2: "The bytes are sent in order — A then B, not reversed.",
+                    3: "The write syscall (fd 1) captured three bytes of output.",
                 },
+                hint="Press R — the output panel shows the three bytes the program wrote.",
             ),
             _step(
                 "response",
-                "What does the exit syscall use for the process status code?",
-                answer=1,
-                options=["RSI", "RDI"],
+                "Run the example (press R) and read the output. The buffer bytes are 72, "
+                "105, 10 — three characters sent to stdout. Type the two letters the "
+                "program printed (the newline is not a letter).",
+                program=read_asm("module5/lesson3_syscalls/example.asm"),
+                keywords=["hi"],
+                model_answer="Hi — byte 72 is 'H', byte 105 is 'i', byte 10 is the "
+                    "newline; the write syscall captured exactly those three bytes.",
+                hint="After R, the STATE panel shows the captured output.",
             ),
             _step(
                 "feedback",
-                "Exit puts the status in RDI (the first argument slot).",
+                "Output 'Hi': the write syscall used RAX = 1, RDI = 1 (stdout), RSI = "
+                "buffer, RDX = 3, and the emulator appended the three bytes to its output "
+                "buffer. System calls turn register setups into real I/O.",
             ),
             _step(
                 "challenge",
@@ -302,24 +334,35 @@ def lesson_strings_arrays() -> Lesson:
             ),
             _step(
                 "prediction",
-                "A string occupies bytes 0x600000..0x600003, ending with a null "
-                "byte. How many bytes does the string data use?",
-                options=["3", "4", "0", "unlimited"],
+                "Press R to run the example: the loop reads the null-terminated string "
+                "'ABC' at 0x600000 and counts non-null bytes. Read the final panel — what "
+                "length ends up in R8 (and RCX)?",
+                program=read_asm("module5/lesson4_strings_arrays/example.asm"),
+                options=["3", "4", "5", "0"],
                 answer=0,
                 feedback={
-                    1: "4 bytes are WRITTEN, but the string content is 3 chars.",
-                    3: "The null terminator is required; it cannot be omitted.",
+                    1: "4 bytes are WRITTEN, but the null terminator is not counted.",
+                    2: "Only three characters exist before the terminator.",
+                    3: "The loop stops at the first zero byte; it counts 3.",
                 },
+                hint="Press R — R8 shows the length, excluding the terminator.",
             ),
             _step(
                 "response",
-                "What byte marks the end of a C string?",
-                answer=1,
-                options=["newline (10)", "null (0)"],
+                "Run the challenge (press R): the program writes the string 'GO' plus its "
+                "terminator, then counts the non-null bytes. Type the length that ends up "
+                "in RBX.",
+                program=read_asm("module5/lesson4_strings_arrays/challenge.asm"),
+                keywords=["2"],
+                model_answer="2 — the loop read 'G', then 'O', then hit the null byte and "
+                    "stopped, so the length counts only the two letters.",
+                hint="After R, RBX shows the number of characters before the zero.",
             ),
             _step(
                 "feedback",
-                "The null terminator (0x00) marks the end.",
+                "RBX = 2. Walking bytes until the null terminator (0x00) is the string "
+                "loop: test each byte, advance the pointer, stop at zero. The length "
+                "excludes the terminator that marks the end.",
             ),
             _step(
                 "challenge",
@@ -387,25 +430,36 @@ def lesson_simd() -> Lesson:
             ),
             _step(
                 "prediction",
-                "With SIMD, how many bytes can paddb add in a single xmm0 "
-                "instruction?",
-                options=["16", "1", "4", "64"],
+                "Press R to run the challenge: element-wise add [1,2,3,4] + [4,3,2,1] "
+                "gives [5,5,5,5]. Read the final panel — what sum (5+5+5+5) ends up in "
+                "RBX?",
+                program=read_asm("module5/lesson5_simd/challenge.asm"),
+                options=["20", "14", "10", "5"],
                 answer=0,
                 feedback={
-                    1: "That is scalar work, one byte at a time.",
-                    2: "xmm registers are 128 bits = 16 bytes.",
-                    3: "64 bytes would need ymm (AVX) or zmm (AVX-512).",
+                    1: "14 is a partial total, not the sum of all four lanes.",
+                    2: "10 is half the work; the four results are all added in.",
+                    3: "5 is one lane's result, not the accumulated total.",
                 },
+                hint="Press R — RBX accumulates the four lane sums.",
             ),
             _step(
                 "response",
-                "Do xmm registers hold one scalar value or a vector of values?",
-                answer=1,
-                options=["one scalar value", "a vector of values"],
+                "Run the example (press R): the scalar loop processes four byte-pairs one "
+                "at a time and RCX counts the iterations. Type the iteration count that "
+                "ends up in RCX.",
+                program=read_asm("module5/lesson5_simd/example.asm"),
+                keywords=["4"],
+                model_answer="4 — RCX counted 0 -> 1 -> 2 -> 3 and stopped when it reached "
+                    "4; four scalar additions where one paddb would have done it in a "
+                    "single instruction.",
+                hint="After R, RCX shows the number of loop iterations.",
             ),
             _step(
                 "feedback",
-                "xmm registers are 128-bit vectors of packed values.",
+                "RCX = 4 — the scalar loop took four iterations to add four byte-pairs. "
+                "That is exactly the work one SIMD paddb performs in a single "
+                "instruction, which is where the speedup comes from.",
             ),
             _step(
                 "challenge",

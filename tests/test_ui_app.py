@@ -243,7 +243,7 @@ def test_lesson_prediction_answer_tracks_attempt(tmp_path):
             # advance to the prediction step (index 6, kind "prediction")
             while lesson.session.current.kind != "prediction":
                 lesson.action_advance()
-            lesson._choose(1)
+            lesson._choose(0)
             assert "Correct" in lesson.query_one("#lesson-feedback").content
             assert app.state.sqlite.count() == 1
 

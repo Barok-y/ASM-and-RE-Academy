@@ -63,27 +63,37 @@ def lesson_elf() -> Lesson:
             ),
             _step(
                 "prediction",
-                "Which section holds the executable code of an ELF binary?",
-                options=[".text", ".data", ".bss", ".rodata"],
+                "Press R to run the challenge: this .text-style function computes "
+                "rdi*3+2 with RDI = 4. Read the final panel — what result ends up in R8?",
+                program=read_asm("module6/lesson1_elf/challenge.asm"),
+                options=["14", "12", "18", "24"],
                 answer=0,
                 feedback={
-                    1: ".data holds initialized, writable globals.",
-                    2: ".bss holds zero-initialized globals.",
-                    3: ".rodata holds read-only constants.",
+                    1: "12 is rdi*3, before the final +2.",
+                    2: "18 would triple the result; the function adds 2, not doubles.",
+                    3: "24 is rdi*6; the snippet multiplies by 3, not 6.",
                 },
+                hint="Press R — 4*3+2 = 14 lands in R8.",
             ),
             _step(
                 "response",
-                "What do program headers describe to the OS loader?",
-                answer=1,
-                options=[
-                    "the author's name",
-                    "how file pieces map into memory at runtime",
-                ],
+                "Run this tiny leaf (press R): RDI = 3 is passed in, the snippet adds 2, "
+                "and the result is kept in R8 before the exit syscall reuses RAX. Type "
+                "the value that ends up in R8.",
+                program="mov rdi, 3\nmov rax, rdi\nadd rax, 2\nmov r8, rax\n"
+                        "mov rax, 60\nmov rdi, 0\nsyscall",
+                keywords=["5"],
+                model_answer="5 — RDI = 3, so rdi + 2 = 5 lands in R8; running that "
+                    "mapped, loaded code is exactly what the loader's program headers set "
+                    "up.",
+                hint="After R, R8 shows 3+2 = 5.",
             ),
             _step(
                 "feedback",
-                "Program headers drive the loader's memory mapping.",
+                "R8 = 5. The snippet ran like code from a .text segment: the loader laid "
+                "it out via the ELF program headers, RDI carried the argument in, and the "
+                "address stepped through the instructions — the same way a real mapped "
+                "binary executes.",
             ),
             _step(
                 "challenge",
@@ -153,25 +163,35 @@ def lesson_sections_symbols() -> Lesson:
             ),
             _step(
                 "prediction",
-                "A global 'int g = 5;' with an initializer lives in which "
-                "section?",
-                options=[".data", ".bss", ".text", ".rodata"],
+                "Press R to run the example: .bss (0x610000) starts as all zeros, the "
+                "program writes the global 7 into it and reads it back. What value ends "
+                "up in R8?",
+                program=read_asm("module6/lesson2_sections_symbols/example.asm"),
+                options=["7", "0", "60", "0x610000"],
                 answer=0,
                 feedback={
-                    1: ".bss is for globals WITHOUT an initializer (zeroed).",
-                    2: ".text is code, not data.",
-                    3: ".rodata is for constants, not writable globals.",
+                    1: "0 is what .bss held BEFORE the write, not after.",
+                    2: "60 is the exit syscall number, consumed at the end.",
+                    3: "0x610000 is the section address, loaded into RBX.",
                 },
+                hint="Press R — R8 shows the value written to .bss.",
             ),
             _step(
                 "response",
-                "What does stripping a binary remove?",
-                answer=1,
-                options=["the code bytes", "the symbol table names"],
+                "Run the challenge (press R): write 3 into a .bss slot, read the "
+                "never-written neighbor (which must be 0), add 5. Type the total that "
+                "ends up in RBX.",
+                program=read_asm("module6/lesson2_sections_symbols/challenge.asm"),
+                keywords=["8"],
+                model_answer="8 — the zero-initialized neighbor read back as 0, proving "
+                    ".bss starts zeroed; 3 + 0 + 5 = 8.",
+                hint="After R, RBX shows the summed total.",
             ),
             _step(
                 "feedback",
-                "Stripping removes symbol names; code and sections remain.",
+                "RBX = 8. The untouched .bss slot read 0 — the zero-fill that defines "
+                ".bss. Stripping a binary removes the symbol NAMES, but the section "
+                "behavior and the code stay; that is why RE survives without symbols.",
             ),
             _step(
                 "challenge",
@@ -241,30 +261,36 @@ def lesson_cfg() -> Lesson:
             ),
             _step(
                 "prediction",
-                "A function whose CFG has a backward edge most likely contains "
-                "which structure?",
-                options=["a loop", "an if/else", "a switch", "a return"],
+                "Press R to run the challenge: the CFG has two outcomes — if RAX > 0 "
+                "double it, else zero it. RAX = 6, so which block runs and what value "
+                "ends up in RBX?",
+                program=read_asm("module6/lesson3_cfg/challenge.asm"),
+                options=["12", "0", "6", "3"],
                 answer=0,
                 feedback={
-                    1: "if/else is a forward diamond, not a backward edge.",
-                    2: "A switch is many forward edges to case blocks.",
-                    3: "A return ends a path; it does not loop back.",
+                    1: "0 is the 'zero it' outcome, which needs RAX <= 0.",
+                    2: "6 doubles to 12; RBX holds the doubled result.",
+                    3: "3 would halve; the taken edge doubles the value.",
                 },
+                hint="Press R — RAX = 6 is positive, so the double block runs.",
             ),
             _step(
                 "response",
-                "What is a basic block?",
-                answer=0,
-                options=[
-                    "a run of instructions with one entry and one exit",
-                    "any single instruction",
-                    "a whole function",
-                    "a block of memory",
-                ],
+                "Run the example (press R): the swap path runs only if rax > rbx — with "
+                "RAX = 5, RBX = 10 it does not. Type the value that ends up in R8 when "
+                "control falls through to the merge block.",
+                program=read_asm("module6/lesson3_cfg/example.asm"),
+                keywords=["5"],
+                model_answer="5 — the CMP/JG edge was not taken (5 is not greater than "
+                    "10), so the swap block never ran and RAX's 5 fell through to the "
+                    "merge block, copied into R8.",
+                hint="After R, R8 shows the value that fell through to the merge.",
             ),
             _step(
                 "feedback",
-                "A basic block is straight-line code ending in a branch.",
+                "R8 = 5 — the CFG took the fall-through edge instead of the swap edge. "
+                "Reading which basic block runs for a given input is how you trace a "
+                "function's paths, and the same edges become a CFG diagram in an RE tool.",
             ),
             _step(
                 "challenge",
@@ -333,30 +359,37 @@ def lesson_crackmes() -> Lesson:
             ),
             _step(
                 "prediction",
-                "Which single-byte change to a conditional jump most directly "
-                "defeats a password check?",
-                options=[
-                    "flip the jump condition",
-                    "change the password literal",
-                    "add a NOP to the grant path",
-                    "change the CMP to MOV",
-                ],
+                "Press R to run the challenge: the original check was 'jne deny', then a "
+                "patcher flipped it to 'je deny' so a WRONG password (RAX = 0) is "
+                "granted. Read the final panel — what value does RBX show for the "
+                "bypassed check?",
+                program=read_asm("module6/lesson4_crackmes/challenge.asm"),
+                options=["1", "0", "1337", "60"],
                 answer=0,
                 feedback={
-                    1: "You may not know the real password to substitute.",
-                    2: "That does not make the check pass.",
-                    3: "That makes the grant path do nothing useful.",
+                    1: "0 would mean denied; the patch makes the wrong password GRANTED.",
+                    2: "1337 is the expected password the candidate never matches.",
+                    3: "60 is the exit syscall number, consumed at the end.",
                 },
+                hint="Press R — with the flipped jump, RBX proves access was granted.",
             ),
             _step(
                 "response",
-                "What instruction flips the condition of a jump during a patch?",
-                answer=1,
-                options=["MOV", "changing je to jne (or jg to jle, etc.)"],
+                "Run the example (press R): the candidate password 42 is compared to the "
+                "expected 42, JE is taken, and the grant path writes 1 to RBX. Type the "
+                "value RBX ends up holding.",
+                program=read_asm("module6/lesson4_crackmes/example.asm"),
+                keywords=["1"],
+                model_answer="1 — CMP found 42 == 42, ZF = 1, JE branched into the grant "
+                    "block, and RBX = 1 marks access granted.",
+                hint="After R, RBX shows the granted flag.",
             ),
             _step(
                 "feedback",
-                "Changing the condition code flips the branch semantics.",
+                "RBX = 1 — the equal compare sent JE into the grant block. That same "
+                "single decision point is the patch target: flip the condition (JE -> "
+                "JNE, etc.) and the check means the opposite, verified by re-running and "
+                "watching RBX.",
             ),
             _step(
                 "challenge",

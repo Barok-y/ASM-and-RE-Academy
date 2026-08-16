@@ -56,24 +56,36 @@ def lesson_cmp_test() -> Lesson:
             ),
             _step(
                 "prediction",
-                "RAX = 9. After 'cmp rax, 5', which flag is set?",
-                options=["ZF", "SF", "CF", "none are set"],
-                answer=2,
+                "Press R to run the challenge: two equal values (9 and 9) are compared "
+                "with CMP. Read the final STATE panel — which flag ends up set?",
+                program=read_asm("module3/lesson1_cmp_test/challenge.asm"),
+                options=["ZF", "SF", "CF", "OF"],
+                answer=0,
                 feedback={
-                    0: "9 - 5 is not zero.",
-                    1: "The result is positive; SF reflects the sign bit.",
-                    3: "A borrow occurred, so CF is set.",
+                    1: "9 - 9 is zero, not negative, so SF stays clear.",
+                    2: "An equality produces no borrow, so CF stays clear.",
+                    3: "The signs never crossed, so OF stays clear.",
                 },
+                hint="Press R — equal operands make the zero flag 1.",
             ),
             _step(
                 "response",
-                "Does CMP modify RAX or RBX?",
-                answer=0,
-                options=["No, only flags change", "Yes, RAX gets the difference"],
+                "Run the example (press R): 'cmp rax, rbx' (both 5) is followed by 'test "
+                "rax, rax'. The TEST of the non-zero value 5 recomputes the flags. Is the "
+                "zero flag set or cleared at the end? Type: set or cleared.",
+                program=read_asm("module3/lesson1_cmp_test/example.asm"),
+                keywords=["cleared"],
+                model_answer="Cleared — the last flag-writing instruction is TEST rax, rax; "
+                    "5 is non-zero, so it clears ZF even though the earlier CMP of equal "
+                    "values had set it.",
+                hint="After R, the STATE panel shows ZF = 0.",
             ),
             _step(
                 "feedback",
-                "Correct: CMP only sets flags; the subtraction result is discarded.",
+                "ZF = 0 at the end. CMP 5, 5 set ZF = 1, but the following TEST overwrote "
+                "the flags with its own result (5 is non-zero), clearing ZF. Both looked "
+                "like the same question, but the flags always reflect the most recent "
+                "flag-writing instruction.",
             ),
             _step(
                 "challenge",
@@ -137,24 +149,35 @@ def lesson_conditional_jumps() -> Lesson:
             ),
             _step(
                 "prediction",
-                "RAX = 7. After 'cmp rax, 5', which jump is taken?",
-                options=["jl target", "je target", "jg target", "jne target"],
-                answer=2,
+                "Press R to run the example: RAX = 3 is compared to 5, and the code reads "
+                "'if rax >= 5 goto else_branch'. Read the final STATE panel — which fall-"
+                "through mov wrote RBX?",
+                program=read_asm("module3/lesson2_conditional_jumps/example.asm"),
+                options=["rbx = 1", "rbx = 2", "rbx = 3", "rbx = 5"],
+                answer=0,
                 feedback={
-                    0: "7 is greater than 5, so the less-than jump falls through.",
-                    1: "7 is not equal to 5.",
-                    3: "JNE would be taken, but JNE is not signed-greater.",
+                    1: "The 'rbx = 2' block only runs when RAX >= 5; here 3 < 5.",
+                    2: "The branches write 1 or 2; the compared operands stay untouched.",
+                    3: "The branches write 1 or 2; the compared operands stay untouched.",
                 },
+                hint="Press R — 3 < 5, so JGE is not taken and the fall-through sets RBX=1.",
             ),
             _step(
                 "response",
-                "Which flag does JE check?",
-                answer=0,
-                options=["ZF", "CF", "SF", "OF"],
+                "Run this program (press R): RAX = 7 is compared to 5 and 'jge big' is "
+                "taken because 7 >= 5. Type the value that ends up in RBX.",
+                program="mov rax, 7\ncmp rax, 5\njge big\nmov rbx, 1\njmp done\n"
+                        "big:\nmov rbx, 2\ndone:\nmov rax, 60\nmov rdi, 0\nsyscall",
+                keywords=["2"],
+                model_answer="2 — CMP computed 7 - 5 with no borrow, so JGE took the branch "
+                    "to 'big', which wrote 2 into RBX.",
+                hint="After R, RBX shows 2 — the branch condition held.",
             ),
             _step(
                 "feedback",
-                "JE (jump if equal) is taken when ZF = 1.",
+                "RBX = 2. The flags from CMP (7 >= 5) made JGE jump to the 'big' block. A "
+                "conditional jump either moves RIP to its target or falls through — here it "
+                "took the target, and RBX proves which mov ran.",
             ),
             _step(
                 "challenge",
@@ -219,25 +242,34 @@ def lesson_loops() -> Lesson:
             ),
             _step(
                 "prediction",
-                "After the loop 'mov rcx, 3; top: add rax, rcx; sub rcx, 1; jne "
-                "top', what is the final RCX?",
-                options=["3", "1", "0", "-1"],
-                answer=2,
+                "Press R to run the example: the loop counter starts at 5 and adds itself "
+                "into RAX each pass (5+4+3+2+1). Read the final panel — what total ends up "
+                "in R8 (RAX's copy)?",
+                program=read_asm("module3/lesson3_loops/example.asm"),
+                options=["15", "5", "0", "20"],
+                answer=0,
                 feedback={
-                    0: "The counter decreases, it does not stay at its start.",
-                    1: "The loop exits only after the decrement to zero.",
-                    3: "JNE stops when RCX == 0, before going negative.",
+                    1: "5 is just the starting counter value, not the sum.",
+                    2: "RAX accumulates; the loop never clears it.",
+                    3: "The counter runs 5..1, and 1+2+3+4+5 = 15, not 20.",
                 },
+                hint="Press R — R8 shows the accumulated sum 0+5+4+3+2+1.",
             ),
             _step(
                 "response",
-                "Which instruction sends control back to the top of a counter loop?",
-                answer=1,
-                options=["sub rcx, 1", "jne top"],
+                "Run the challenge (press R): it sums the integers from 10 down to 1. "
+                "Type the total that ends up in RBX.",
+                program=read_asm("module3/lesson3_loops/challenge.asm"),
+                keywords=["55"],
+                model_answer="55 — each pass adds the counter (10, 9, ..., 1) into RBX, "
+                    "then decrements and jumps back until the counter reaches 0.",
+                hint="After R, RBX shows the sum of 1..10.",
             ),
             _step(
                 "feedback",
-                "JNE is the conditional jump back to the loop label.",
+                "RBX = 55. The backward edge is the loop: 'add rbx, rcx' accumulates, "
+                "'sub rcx, 1' counts down, and 'jne' jumps back while RCX is non-zero. "
+                "When RCX hits zero the JNE falls through and the loop ends.",
             ),
             _step(
                 "challenge",
@@ -302,32 +334,35 @@ def lesson_switches() -> Lesson:
             ),
             _step(
                 "prediction",
-                "For a switch on dense values 0..255, which implementation is "
-                "usually faster?",
-                options=["a CMP/JE chain", "a jump table", "they are identical", "a loop"],
-                answer=1,
+                "Press R to run the example: RAX = 2 enters a CMP/JE chain and finds "
+                "'case 2'. Read the final panel — which value ends up in R8 (the copy of "
+                "RBX)?",
+                program=read_asm("module3/lesson4_switches/example.asm"),
+                options=["20", "10", "0", "40"],
+                answer=0,
                 feedback={
-                    0: "A chain checks cases one at a time - up to 256 comparisons.",
-                    2: "A table is one indexed memory jump, not a scan.",
-                    3: "Switches do not iterate; they dispatch.",
+                    1: "10 belongs to case 1, which is skipped when RAX = 2.",
+                    2: "0 is the default path; a matching case takes priority.",
+                    3: "The chain picks one case; it does not double the value.",
                 },
+                hint="Press R — RBX takes the value of the matched case (2 -> 20).",
             ),
             _step(
                 "response",
-                "When do compilers typically emit a jump table instead of a CMP "
-                "chain?",
-                answer=0,
-                options=[
-                    "dense, consecutive case values",
-                    "very sparse case values",
-                    "only two cases",
-                    "never, only chains are legal",
-                ],
+                "Run the challenge (press R): the same switch style with RAX = 3 chooses "
+                "case 3, which stores 300 into RBX. Type the value that ends up in RBX.",
+                program=read_asm("module3/lesson4_switches/challenge.asm"),
+                keywords=["300"],
+                model_answer="300 — the CMP/JE chain fell through cases 1 and 2, matched "
+                    "case 3, and that block wrote 300 before jumping to the merge point.",
+                hint="After R, RBX shows 300.",
             ),
             _step(
                 "feedback",
-                "Dense consecutive values index the table cleanly; sparse values "
-                "would waste table space.",
+                "RBX = 300 — reading the chain as a dispatch: each CMP tests one case, the "
+                "matched JE transfers to that block, and the trailing JMP reaches the "
+                "merge. That is the machine shape of a switch, whether a chain or a jump "
+                "table.",
             ),
             _step(
                 "challenge",
@@ -396,26 +431,35 @@ def lesson_rebuild_pseudocode() -> Lesson:
             ),
             _step(
                 "prediction",
-                "A function ends with 'jne loop_top' jumping backward. What "
-                "structure does it contain?",
-                options=["an if/else", "a loop", "a function call", "a switch"],
-                answer=1,
+                "Press R to run the example and read the final STATE panel: it reads as "
+                "'rcx = max(rax, rbx)' with RAX = 6, RBX = 2. What value ends up in R8 "
+                "(RCX's copy)?",
+                program=read_asm("module3/lesson5_rebuild_pseudocode/example.asm"),
+                options=["6", "2", "8", "4"],
+                answer=0,
                 feedback={
-                    0: "Forward jumps with a merge point suggest if/else.",
-                    2: "Function calls use CALL/RET, not JNE.",
-                    3: "Switches use many forward CMP/JE branches.",
+                    1: "2 is the smaller operand; the max keeps the larger.",
+                    2: "The function selects a value; it does not add them.",
+                    3: "Neither operand shrinks; the compare only picks the larger.",
                 },
+                hint="Press R — RCX holds the larger of the two inputs.",
             ),
             _step(
                 "response",
-                "What does 'cmp rax, rbx; jg target' most directly express in "
-                "pseudocode?",
-                answer=1,
-                options=["a loop", "an if (rax > rbx)"],
+                "Run the challenge (press R): it computes max(RAX, RBX) with RAX = 3, "
+                "RBX = 7 and must keep the larger in RBX. Type the value that ends up in "
+                "RBX.",
+                program=read_asm("module3/lesson5_rebuild_pseudocode/challenge.asm"),
+                keywords=["7"],
+                model_answer="7 — since 3 < 7 the branch that copies RAX into RBX is not "
+                    "taken, so RBX keeps its larger input: 'if (rax > rbx) rbx = rax;'.",
+                hint="After R, RBX shows the larger of the two inputs.",
             ),
             _step(
                 "feedback",
-                "CMP + JG is the machine-code form of 'if (rax > rbx)'.",
+                "RBX = 7 — a conditional copy, read back as 'if (rax > rbx) then rbx = "
+                "rax'. Reconstructing that decision from a CMP/JG pair is exactly the "
+                "pseudocode-recovery skill the lesson is teaching.",
             ),
             _step(
                 "challenge",

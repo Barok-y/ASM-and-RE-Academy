@@ -87,37 +87,37 @@ def lesson_fde() -> Lesson:
             ),
             _step(
                 "prediction",
-                "During the fetch stage, which register tells the CPU which instruction to "
-                "read next?",
-                options=["RAX", "RIP", "RSP", "RBP"],
-                answer=1,
+                "Press R to run this one-instruction program, then read the STATE panel: "
+                "which register holds the value 5 that the MOV wrote?",
+                program="mov rax, 5",
+                options=["RAX", "RBX", "RSP", "RIP"],
+                answer=0,
                 feedback={
-                    0: "RAX is a general-purpose data register — it holds values, not the "
-                       "location of code.",
-                    2: "RSP is the stack pointer. It tracks the stack, not the current "
-                       "instruction.",
-                    3: "RBP is the frame pointer used to navigate stack frames; it does not "
-                       "point at code.",
+                    1: "RBX was never touched; the MOV wrote its result into RAX.",
+                    2: "RSP is the stack pointer — it still points at the (untouched) stack.",
+                    3: "RIP points at the next instruction; the data value lives in RAX.",
                 },
-                hint="The register's name literally starts with the word 'instruction'.",
+                hint="Press R — after the run, RAX shows the value the instruction moved.",
             ),
             _step(
                 "response",
-                "In your own words, what happens during the decode stage?",
-                answer=None,
-                hint="Think about what the CPU needs to work out before it can perform an "
-                     "action — the bytes alone are meaningless until translated.",
+                "Run 'mov rax, 3' (press R), then trace the loop by hand: fetch reads the "
+                "instruction's bytes, decode translates them, execute performs the move. "
+                "Type the value RAX holds when the machine stops.",
+                program="mov rax, 3",
+                keywords=["3"],
                 model_answer=(
-                    "During decode, the CPU's decoder translates the raw instruction bytes "
-                    "into a concrete operation, such as 'copy the value 5 into RAX'."
+                    "3 — the execute stage wrote the immediate 3 into RAX; fetch read the "
+                    "instruction bytes and decode turned them into 'copy 3 into RAX'."
                 ),
-                keywords=["decode", "translate", "instruction", "bytes"],
+                hint="After R, the STATE panel shows rax = 3.",
             ),
             _step(
                 "feedback",
-                "During decode, the CPU's decoder translates the raw instruction bytes into a "
-                "concrete operation — for example, 'copy the number 5 into RAX'. Decode is "
-                "what turns raw bytes into an action the CPU can perform.",
+                "RAX ends at 3: FETCH read the bytes of 'mov rax, 3', DECODE translated "
+                "them into a copy operation, and EXECUTE wrote the immediate into RAX. The "
+                "whole fetch-decode-execute loop produced that single, observable state "
+                "change.",
             ),
             _step(
                 "challenge",
@@ -239,18 +239,23 @@ def lesson_registers() -> Lesson:
             ),
             _step(
                 "response",
-                "Which of AH and AL is the more significant 8-bit half of AX?",
-                answer=0,
-                options=["AH", "AL"],
-                feedback={
-                    1: "AL is the low byte (bits 0-7); AH is the high byte.",
-                },
-                hint="The 'H' in AH stands for 'high'.",
+                "Run 'mov eax, 0x11223344' then 'mov al, 0xFF' and watch EAX and AL update: "
+                "the write through AL touches only the lowest byte. Are any bits above bit 7 "
+                "of RAX changed? Type: yes or no.",
+                program="mov eax, 0x11223344\nmov al, 0xFF",
+                keywords=["no"],
+                model_answer="No — AL is only bits 0-7 of RAX, so writing AL leaves every "
+                    "bit above untouched: RAX becomes 0x112233FF with the upper bytes "
+                    "intact.",
+                hint="After the run, RAX shows 0x112233FF — the same upper bytes, a new "
+                     "low byte.",
             ),
             _step(
                 "feedback",
-                "AH is the high byte of AX — bits 8 through 15 — so it is the more "
-                "significant half. AL covers bits 0 through 7, the least significant byte.",
+                "RAX = 0x112233FF: writing 0xFF through AL replaced only the low 8 bits, so "
+                "bits 8-63 kept their earlier values (0x11223344). The small register names "
+                "address slices of the same physical cell — a key fact when reading compiled "
+                "code.",
             ),
             _step(
                 "challenge",
@@ -350,18 +355,20 @@ def lesson_mov() -> Lesson:
             ),
             _step(
                 "response",
-                "Does 'mov rax, rbx' change the value of RBX?",
-                answer=0,
-                options=["No, RBX keeps its value", "Yes, RBX becomes 0"],
-                feedback={
-                    1: "MOV copies from the source; the source register is never modified.",
-                },
-                hint="Re-read the analogy: MOV is copy-paste.",
+                "Run 'mov rax, 9', 'mov rbx, rax', then 'mov rax, 0'. The last MOV "
+                "overwrites RAX, not RBX. Type the value RBX still holds when the machine "
+                "stops.",
+                program="mov rax, 9\nmov rbx, rax\nmov rax, 0",
+                keywords=["9"],
+                model_answer="9 — 'mov rbx, rax' copied 9 into RBX; the following 'mov rax, "
+                    "0' rewrites RAX only, so RBX keeps 9. MOV is a one-way copy.",
+                hint="After R, RBX reads 9 even though RAX was zeroed afterwards.",
             ),
             _step(
                 "feedback",
-                "Correct: MOV is a copy. The source register keeps its value — only the "
-                "destination is written.",
+                "RBX = 9 — copies are one-way. 'mov rbx, rax' wrote 9 into RBX, and the "
+                "later MOV to RAX could not reach RBX. The source of a MOV is never modified "
+                "or linked to the destination.",
             ),
             _step(
                 "challenge",
@@ -463,18 +470,19 @@ def lesson_add_sub() -> Lesson:
             ),
             _step(
                 "response",
-                "After 'add rax, 1' on RAX = 0, is ZF set or cleared?",
-                answer=1,
-                options=["set", "cleared"],
-                feedback={
-                    0: "ZF is set only when the result is zero; here the result is 1.",
-                },
-                hint="The result is 1, which is not zero.",
+                "Add then subtract: 'mov rax, 5', 'add rax, 3', 'sub rax, 4'. Trace the "
+                "running total by hand. Type the value that ends up in RAX.",
+                program="mov rax, 5\nadd rax, 3\nsub rax, 4",
+                keywords=["4"],
+                model_answer="4 — RAX becomes 5 → 8 (add 3) → 4 (sub 4). Each arithmetic "
+                    "instruction overwrites the destination with the new total.",
+                hint="Follow the total: 5, then +3, then -4.",
             ),
             _step(
                 "feedback",
-                "Cleared: the result is 1, which is non-zero, so ZF = 0. ZF is the 'did it "
-                "come out to zero?' flag.",
+                "RAX = 4: start at 5, ADD 3 makes 8, SUB 4 leaves 4. ADD and SUB replace "
+                "the destination with the running total — and they are also what update the "
+                "flags a later branch reads.",
             ),
             _step(
                 "challenge",
@@ -572,19 +580,19 @@ def lesson_lea() -> Lesson:
             ),
             _step(
                 "response",
-                "Does LEA read any memory?",
-                answer=0,
-                options=["No", "Yes"],
-                feedback={
-                    1: "LEA only computes an address; reading memory would be a MOV load.",
-                },
-                hint="The 'L' is for 'Load Effective Address', not 'Load from memory'.",
+                "Run 'mov rbx, 0x2000' then 'lea rax, [rbx + 8]'. Read the result in the "
+                "STATE panel: type the hex address (with 0x) that LEA stores into RAX.",
+                program="mov rbx, 0x2000\nlea rax, [rbx + 8]",
+                keywords=["0x2008", "2008"],
+                model_answer="0x2008 — LEA computed rbx + 8 = 0x2000 + 8 and stored that "
+                    "address in RAX without dereferencing memory.",
+                hint="After R, RAX shows 0x2008.",
             ),
             _step(
                 "feedback",
-                "No. LEA only computes an address; it never dereferences. That is exactly "
-                "why compilers use it for simple arithmetic like x*4+1 without disturbing "
-                "the flags.",
+                "RAX = 0x2008 — LEA answered 'where would this location be?' by adding the "
+                "displacement to the base, and never touched the memory at that address. "
+                "That is also why compilers use it for flag-free arithmetic.",
             ),
             _step(
                 "challenge",
@@ -685,19 +693,19 @@ def lesson_flags() -> Lesson:
             ),
             _step(
                 "response",
-                "MOV leaves flags untouched. True or false?",
-                answer=0,
-                options=["True", "False"],
-                feedback={
-                    1: "MOV only copies data; flags are changed only by arithmetic and "
-                       "comparison instructions.",
-                },
-                hint="Which instructions change flags — copies or math?",
+                "Run 'mov rax, 3' then 'sub rax, 3'. The subtraction makes the result "
+                "exactly zero. Type: is the zero flag set? (yes or no)",
+                program="mov rax, 3\nsub rax, 3",
+                keywords=["yes"],
+                model_answer="Yes — 3 - 3 = 0, and a zero result sets ZF to 1. RAX is left "
+                    "at 0 and the flag now says 'the answer was zero'.",
+                hint="After R, the STATE panel shows ZF = 1.",
             ),
             _step(
                 "feedback",
-                "True. MOV does not affect flags; only arithmetic and comparison "
-                "instructions do. This is why LEA is useful for math before a compare.",
+                "Yes, ZF = 1. The SUB produced exactly 0, so the zero flag was set. MOV "
+                "copies data; arithmetic and comparison instructions are what scribble on "
+                "the flags a later branch reads.",
             ),
             _step(
                 "challenge",
@@ -787,19 +795,19 @@ def lesson_bits() -> Lesson:
             ),
             _step(
                 "response",
-                "Fast way to clear RAX to zero using one register?",
-                answer=0,
-                options=["xor rax, rax", "mov rax, 1", "and rax, rax"],
-                feedback={
-                    1: "mov rax, 1 sets RAX to 1, not zero.",
-                    2: "ANDing RAX with itself leaves it unchanged.",
-                },
-                hint="XOR a register with itself: every differing-bit position becomes 0.",
+                "Run 'mov rax, 0b1010', then 'xor rax, rax'. XOR compares RAX with itself, "
+                "so every bit cancels. Type the value RAX ends up holding.",
+                program="mov rax, 0b1010\nxor rax, rax",
+                keywords=["0", "0x0"],
+                model_answer="0 — XORing a register with itself clears every bit, so RAX "
+                    "becomes 0. This is the standard fast way to zero a register.",
+                hint="After R, RAX reads 0 — the run proves the idiom.",
             ),
             _step(
                 "feedback",
-                "Correct: 'xor rax, rax' clears RAX. It is shorter and often faster than "
-                "'mov rax, 0', because the XOR does not need to encode an immediate.",
+                "RAX = 0: XOR produces a 1 only where the two operands differ, and a "
+                "register differs from itself nowhere — so every bit becomes 0. 'xor rax, "
+                "rax' is the classic fast zero, shorter than loading an immediate.",
             ),
             _step(
                 "challenge",

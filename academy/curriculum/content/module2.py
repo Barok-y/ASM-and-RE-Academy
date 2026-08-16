@@ -61,24 +61,36 @@ def lesson_layout() -> Lesson:
             ),
             _step(
                 "prediction",
-                "The data segment starts at 0x600000. Where is the heap segment?",
-                options=["0x400000", "0x610000", "0x700000", "0x7ffff00000"],
-                answer=2,
+                "Press R to run the example and read the final STATE panel: the program "
+                "addresses the data segment through RBX. Which register still holds the "
+                "data-segment base 0x600000 at exit?",
+                program=read_asm("module2/lesson1_memory_layout/example.asm"),
+                options=["RBX", "RAX", "RDX", "RSP"],
+                answer=0,
                 feedback={
-                    0: "0x400000 is the text segment.",
-                    1: "0x610000 is the bss segment.",
-                    3: "That is the top of the stack segment.",
+                    1: "RAX is reused by the exit syscall, not by the address setup.",
+                    2: "RDX is left at 0; the data address was loaded into RBX.",
+                    3: "RSP tracks the stack, a different segment entirely.",
                 },
+                hint="Press R — RBX shows 0x600000, the base the byte was stored at.",
             ),
             _step(
                 "response",
-                "Which segment holds code and is typically read-only?",
-                answer=1,
-                options=["data", "text"],
+                "Run this program (press R): it stores the byte 17 into the data segment "
+                "at 0x600009, then loads it straight back with MOVZX. Type the value that "
+                "ends up in RDX.",
+                program="mov rbx, 0x600000\nmov byte ptr [rbx+8], 17\n"
+                        "movzx rdx, byte ptr [rbx+8]\nmov rax, 60\nmov rdi, 0\nsyscall",
+                keywords=["17"],
+                model_answer="17 — the store wrote 17 into the data segment and the MOVZX "
+                    "read the exact byte back into RDX, so memory round-tripped the value.",
+                hint="After R, RDX shows the byte that was stored.",
             ),
             _step(
                 "feedback",
-                "Text is the code segment; it is mapped without write permission.",
+                "RDX = 17: the data segment accepted the byte at 0x600009 and returned the "
+                "same byte on the load. Segments are ordinary addressable memory with "
+                "roles — data is the read/write home for globals.",
             ),
             _step(
                 "challenge",
@@ -142,29 +154,38 @@ def lesson_stack_rsp() -> Lesson:
             ),
             _step(
                 "prediction",
-                "RSP = 0x7ffffef00 and RAX = 3. After 'push rax', what is RSP?",
-                options=[
-                    "0x7ffffef00",
-                    "0x7ffffef08",
-                    "0x7ffffeef8",
-                    "0x7fffffef0",
-                ],
-                answer=2,
+                "Press R to run the example: RAX = 7 is pushed, RAX is disturbed, then the "
+                "stack's top is popped into RBX. Read the final STATE panel — which value "
+                "ends up in RBX?",
+                program=read_asm("module2/lesson2_stack_rsp/example.asm"),
+                options=["7", "99", "0", "the exit code"],
+                answer=0,
                 feedback={
-                    0: "PUSH always changes RSP.",
-                    1: "The stack grows DOWN: RSP decreases.",
-                    3: "PUSH moves RSP by exactly 8 bytes, not 0x1f0.",
+                    1: "99 was written to RAX AFTER the save; the saved 7 came back via POP.",
+                    2: "POP writes the popped value into its destination; it is never left at 0.",
+                    3: "POP pulls the data value off the stack, not the process exit code.",
                 },
+                hint="Press R — RBX reads 7, the value that was pushed before RAX changed.",
             ),
             _step(
                 "response",
-                "Does the stack grow toward lower or higher addresses?",
-                answer=0,
-                options=["lower", "higher"],
+                "Run this short program (press R): push 5, overwrite RAX, then pop into "
+                "RDX. Type the value that ends up in RDX.",
+                program=(
+                    "mov rax, 5\npush rax\nmov rax, 1\npop rdx\n"
+                    "mov rax, 60\nmov rdi, 0\nsyscall"
+                ),
+                keywords=["5"],
+                model_answer="5 — PUSH saved 5 on the stack at RSP, MOV clobbered RAX, and "
+                    "POP read the saved 5 back into RDX; the stack preserved the value "
+                    "across the write.",
+                hint="After R, RDX shows the value that was saved before the clobber.",
             ),
             _step(
                 "feedback",
-                "It grows downward, so PUSH subtracts from RSP.",
+                "RDX = 5. PUSH wrote 5 onto the top of the stack and RSP dropped by 8; "
+                "after MOV destroyed RAX, POP lifted the value back off and restored 5 "
+                "into RDX. The stack grows down, and PUSH/POP keep that LIFO order.",
             ),
             _step(
                 "challenge",
@@ -232,29 +253,37 @@ def lesson_stack_frames() -> Lesson:
             ),
             _step(
                 "prediction",
-                "After 'sub rsp, 16', where do the two locals live?",
-                options=[
-                    "[rsp] and [rsp+8]",
-                    "[rsp+16] and [rsp+24]",
-                    "[rsp-8] and [rsp-16]",
-                    "in registers only",
-                ],
+                "Press R to run the challenge: the frame reserves 24 bytes and stores "
+                "1/2/3 at offsets 0/8/16, then sums the three locals. Read the final panel "
+                "— what total ends up in RBX?",
+                program=read_asm("module2/lesson3_stack_frames/challenge.asm"),
+                options=["6", "3", "24", "1"],
                 answer=0,
                 feedback={
-                    1: "RSP moved down by 16, so the reserved space is [rsp, rsp+16).",
-                    2: "That would be below the stack, outside the frame.",
-                    3: "Locals are in memory; the registers just hold addresses.",
+                    1: "3 is one local, not the sum of all three.",
+                    2: "24 is the frame size in bytes, not the accumulated value.",
+                    3: "1 is the first local's value, not the total.",
                 },
+                hint="Press R — RBX shows the sum of the three stored locals.",
             ),
             _step(
                 "response",
-                "Which register acts as the stable frame base in a classic prologue?",
-                answer=1,
-                options=["RSP", "RBP"],
+                "Run this small frame (press R): 8 bytes are reserved at [rsp], the value "
+                "42 is stored there, then loaded back into RDX before the frame is "
+                "reclaimed. Type the value RDX ends up holding.",
+                program="sub rsp, 8\nmov qword ptr [rsp], 42\nmov rdx, [rsp]\n"
+                        "add rsp, 8\nmov rax, 60\nmov rdi, 0\nsyscall",
+                keywords=["42"],
+                model_answer="42 — the reserved stack slot held the value until the load "
+                    "copied it into RDX; that slot was a local addressed relative to the "
+                    "frame.",
+                hint="After R, RDX shows the value stored into the frame slot.",
             ),
             _step(
                 "feedback",
-                "RBP is the frame pointer; RSP keeps moving as the function runs.",
+                "RDX = 42. A reserved block of stack (SUB RSP, N) is the locals area; the "
+                "value was stored and loaded back from one of its slots. RBP is the fixed "
+                "reference a prologue sets so every local has a stable address.",
             ),
             _step(
                 "challenge",
@@ -321,30 +350,36 @@ def lesson_heap() -> Lesson:
             ),
             _step(
                 "prediction",
-                "If heap grows up and stack grows down, what happens to a buffer "
-                "that overruns its heap block toward higher addresses?",
-                options=[
-                    "It collides with the stack",
-                    "It collides with the text segment",
-                    "It stays inside the same heap block",
-                    "It is caught by the CPU automatically",
-                ],
+                "Press R to run the example: RAX loads 0x1111111122222222, writes it into "
+                "the heap block at 0x700000, and reads it back into RCX. Which register "
+                "still shows the heap base 0x700000 at exit?",
+                program=read_asm("module2/lesson4_heap/example.asm"),
+                options=["RBX", "RAX", "RCX", "RSP"],
                 answer=0,
                 feedback={
-                    1: "The heap is far above the text segment.",
-                    2: "An overrun by definition leaves the block.",
-                    3: "The CPU does not track heap block boundaries.",
+                    1: "RAX is consumed by the exit syscall at the end.",
+                    2: "RCX holds the VALUE loaded back, not the base address.",
+                    3: "RSP points at the stack, the segment that grows downward.",
                 },
+                hint="Press R — RBX keeps the heap base it was loaded with.",
             ),
             _step(
                 "response",
-                "Who is responsible for freeing memory allocated on the heap?",
-                answer=1,
-                options=["the stack", "the program (via free/delete)"],
+                "Run this program (press R): it treats 0x700000 as a heap block, writes "
+                "100 into it, and reads it back into RDX. Type the value RDX ends up "
+                "holding.",
+                program="mov rbx, 0x700000\nmov qword ptr [rbx], 100\nmov rdx, [rbx]\n"
+                        "mov rax, 60\nmov rdi, 0\nsyscall",
+                keywords=["100"],
+                model_answer="100 — the heap slot stored 100 and the load returned it; the "
+                    "heap is just addressable memory whose lifetime the program controls.",
+                hint="After R, RDX shows the value stored into the heap block.",
             ),
             _step(
                 "feedback",
-                "Correct: heap memory is manual - the program must release it.",
+                "RDX = 100 — the heap block round-tripped the value. Nothing auto-frees a "
+                "heap allocation; the program requested the block and must release it, "
+                "otherwise the block leaks.",
             ),
             _step(
                 "challenge",
